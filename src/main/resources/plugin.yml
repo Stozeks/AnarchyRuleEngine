@@ -1,0 +1,6 @@
+name: AnarchyRuleEngine
+version: '${project.version}'
+main: me.stozeks.anarchyruleengine.core.AnarchyRuleEnginePlugin
+api-version: '1.16'
+author: Stozeks
+description: A configurable rule engine for Paper 1.16.5 servers.
