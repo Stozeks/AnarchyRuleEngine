@@ -7,6 +7,7 @@ import me.stozeks.anarchyruleengine.listener.PlayerInteractListener;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.loader.RuleLoader;
 import me.stozeks.anarchyruleengine.model.Rule;
+import me.stozeks.anarchyruleengine.executor.RuleExecutor;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collections;
@@ -20,7 +21,10 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        ruleEngine = new RuleEngine(Collections.emptyList());
+        ruleEngine = new RuleEngine(
+                new RuleExecutor(),
+                Collections.emptyList()
+        );
 
         try {
             List<Rule> loadedRules = createRuleLoader().loadRules();

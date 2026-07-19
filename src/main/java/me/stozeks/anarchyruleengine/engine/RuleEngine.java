@@ -1,6 +1,6 @@
 package me.stozeks.anarchyruleengine.engine;
 
-import me.stozeks.anarchyruleengine.action.RuleAction;
+import me.stozeks.anarchyruleengine.executor.RuleExecutor;
 import me.stozeks.anarchyruleengine.model.InteractionContext;
 import me.stozeks.anarchyruleengine.model.Rule;
 import me.stozeks.anarchyruleengine.model.RuleExecutionResult;
@@ -11,9 +11,14 @@ import java.util.List;
 
 public final class RuleEngine {
 
+    private final RuleExecutor ruleExecutor;
     private final List<Rule> rules;
 
-    public RuleEngine(List<Rule> rules) {
+    public RuleEngine(
+            RuleExecutor ruleExecutor,
+            List<Rule> rules
+    ) {
+        this.ruleExecutor = ruleExecutor;
         this.rules = new ArrayList<>(rules);
         sortRulesByPriority();
     }
@@ -22,21 +27,14 @@ public final class RuleEngine {
         RuleExecutionResult result = new RuleExecutionResult();
 
         for (Rule rule : rules) {
-            if (!rule.isEnabled()) {
-                continue;
-            }
+            boolean stopProcessing =
+                    ruleExecutor.executeIfMatches(
+                            rule,
+                            context,
+                            result
+                    );
 
-            if (!rule.matches(context)) {
-                continue;
-            }
-
-            result.setMatched(true);
-            result.setMatchedRuleId(rule.getId());
-
-            executeActions(rule, context, result);
-
-            if (rule.shouldStopProcessing()) {
-                result.setStopProcessing(true);
+            if (stopProcessing) {
                 break;
             }
         }
@@ -54,20 +52,10 @@ public final class RuleEngine {
         return new ArrayList<>(rules);
     }
 
-    private void executeActions(
-            Rule rule,
-            InteractionContext context,
-            RuleExecutionResult result
-    ) {
-        for (RuleAction action : rule.getActions()) {
-            action.execute(context, result);
-            result.incrementExecutedActions();
-        }
-    }
-
     private void sortRulesByPriority() {
         rules.sort(
-                Comparator.comparingInt(Rule::getPriority).reversed()
+                Comparator.comparingInt(Rule::getPriority)
+                        .reversed()
         );
     }
 }
