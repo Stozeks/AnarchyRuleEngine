@@ -5,4 +5,15 @@ settings:
 
 items: {}
 
-rules: {}
+rules:
+  # deny-diamond:
+  #   enabled: true
+  #   priority: 100
+  #   stop-processing: true
+  #   conditions:
+  #     material: DIAMOND
+  #     permission: "anarchyruleengine.diamond"
+  #   actions:
+  #     - type: message
+  #       message: "&cYou cannot use diamonds here."
+  #     - type: cancel
