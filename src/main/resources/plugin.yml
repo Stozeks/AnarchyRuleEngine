@@ -4,3 +4,15 @@ main: me.stozeks.anarchyruleengine.core.AnarchyRuleEnginePlugin
 api-version: '1.16'
 author: Stozeks
 description: A configurable rule engine for Paper 1.16.5 servers.
+
+commands:
+  are:
+    description: Main AnarchyRuleEngine command.
+    usage: /are reload
+    aliases:
+      - anarchyruleengine
+
+permissions:
+  anarchyruleengine.command.reload:
+    description: Allows reloading AnarchyRuleEngine rules.
+    default: op

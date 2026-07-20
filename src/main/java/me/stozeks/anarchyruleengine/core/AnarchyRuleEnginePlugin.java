@@ -1,13 +1,16 @@
 package me.stozeks.anarchyruleengine.core;
 
+import me.stozeks.anarchyruleengine.command.RuleCommand;
 import me.stozeks.anarchyruleengine.engine.RuleEngine;
+import me.stozeks.anarchyruleengine.executor.RuleExecutor;
 import me.stozeks.anarchyruleengine.factory.ActionFactory;
 import me.stozeks.anarchyruleengine.factory.ConditionFactory;
 import me.stozeks.anarchyruleengine.listener.PlayerInteractListener;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.loader.RuleLoader;
 import me.stozeks.anarchyruleengine.model.Rule;
-import me.stozeks.anarchyruleengine.executor.RuleExecutor;
+import me.stozeks.anarchyruleengine.service.RuleReloadService;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collections;
@@ -17,9 +20,15 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     private RuleEngine ruleEngine;
 
+    private ConditionFactory conditionFactory;
+    private ActionFactory actionFactory;
+
     @Override
     public void onEnable() {
         saveDefaultConfig();
+
+        conditionFactory = new ConditionFactory();
+        actionFactory = new ActionFactory();
 
         ruleEngine = new RuleEngine(
                 new RuleExecutor(),
@@ -28,6 +37,7 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
         try {
             List<Rule> loadedRules = createRuleLoader().loadRules();
+
             ruleEngine.replaceRules(loadedRules);
 
             getLogger().info(
@@ -42,10 +52,8 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
             return;
         }
 
-        getServer().getPluginManager().registerEvents(
-                new PlayerInteractListener(ruleEngine),
-                this
-        );
+        registerListeners();
+        registerCommands();
 
         getLogger().info(
                 "AnarchyRuleEngine has been enabled."
@@ -63,11 +71,40 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
         return ruleEngine;
     }
 
+    private void registerListeners() {
+        getServer().getPluginManager().registerEvents(
+                new PlayerInteractListener(ruleEngine),
+                this
+        );
+    }
+
+    private void registerCommands() {
+        RuleReloadService ruleReloadService =
+                new RuleReloadService(
+                        this,
+                        ruleEngine,
+                        conditionFactory,
+                        actionFactory
+                );
+
+        PluginCommand ruleCommand = getCommand("are");
+
+        if (ruleCommand == null) {
+            throw new IllegalStateException(
+                    "Command 'are' is missing from plugin.yml."
+            );
+        }
+
+        ruleCommand.setExecutor(
+                new RuleCommand(ruleReloadService)
+        );
+    }
+
     private RuleLoader createRuleLoader() {
         return new RuleLoader(
                 getConfig(),
-                new ConditionFactory(),
-                new ActionFactory()
+                conditionFactory,
+                actionFactory
         );
     }
 }
