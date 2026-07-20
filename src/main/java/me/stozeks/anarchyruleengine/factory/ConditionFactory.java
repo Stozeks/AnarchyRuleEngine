@@ -1,8 +1,8 @@
 package me.stozeks.anarchyruleengine.factory;
-
 import me.stozeks.anarchyruleengine.condition.AlwaysCondition;
 import me.stozeks.anarchyruleengine.condition.MaterialCondition;
 import me.stozeks.anarchyruleengine.condition.PermissionCondition;
+import me.stozeks.anarchyruleengine.condition.RegionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.condition.WorldCondition;
@@ -23,7 +23,8 @@ public final class ConditionFactory {
                     "always",
                     "material",
                     "permission",
-                    "world"
+                    "world",
+                    "region"
             )
     );
 
@@ -42,11 +43,13 @@ public final class ConditionFactory {
         String materialName = section.getString("material");
         String permission = section.getString("permission");
         String worldName = section.getString("world");
+        String regionName = section.getString("region");
 
         if (always && (
                 materialName != null
                         || permission != null
                         || worldName != null
+                        || regionName != null
         )) {
             throw new RuleLoadException(
                     "Condition 'always' cannot be combined with other conditions."
@@ -69,6 +72,13 @@ public final class ConditionFactory {
         if (worldName != null) {
             conditions.add(createWorldCondition(worldName));
         }
+
+        if (regionName != null) {
+            conditions.add(createRegionCondition(regionName));
+        }
+
+
+
 
         return conditions;
     }
@@ -117,6 +127,18 @@ public final class ConditionFactory {
         }
 
         return new WorldCondition(normalizedWorldName);
+    }
+
+    private RuleCondition createRegionCondition(String regionName) {
+        String normalizedRegionName = regionName.trim();
+
+        if (normalizedRegionName.isEmpty()) {
+            throw new RuleLoadException(
+                    "Region condition cannot be empty."
+            );
+        }
+
+        return new RegionCondition(normalizedRegionName);
     }
 
     private void validateKeys(ConfigurationSection section) {
