@@ -5,6 +5,7 @@ import me.stozeks.anarchyruleengine.condition.MaterialCondition;
 import me.stozeks.anarchyruleengine.condition.PermissionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
+import me.stozeks.anarchyruleengine.condition.WorldCondition;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -18,7 +19,12 @@ import java.util.Set;
 public final class ConditionFactory {
 
     private static final Set<String> SUPPORTED_KEYS = new HashSet<>(
-            Arrays.asList("always", "material", "permission")
+            Arrays.asList(
+                    "always",
+                    "material",
+                    "permission",
+                    "world"
+            )
     );
 
     public List<RuleCondition> createConditions(
@@ -35,8 +41,13 @@ public final class ConditionFactory {
         boolean always = section.getBoolean("always", false);
         String materialName = section.getString("material");
         String permission = section.getString("permission");
+        String worldName = section.getString("world");
 
-        if (always && (materialName != null || permission != null)) {
+        if (always && (
+                materialName != null
+                        || permission != null
+                        || worldName != null
+        )) {
             throw new RuleLoadException(
                     "Condition 'always' cannot be combined with other conditions."
             );
@@ -53,6 +64,10 @@ public final class ConditionFactory {
 
         if (permission != null) {
             conditions.add(createPermissionCondition(permission));
+        }
+
+        if (worldName != null) {
+            conditions.add(createWorldCondition(worldName));
         }
 
         return conditions;
@@ -90,6 +105,18 @@ public final class ConditionFactory {
         }
 
         return new PermissionCondition(normalizedPermission);
+    }
+
+    private RuleCondition createWorldCondition(String worldName) {
+        String normalizedWorldName = worldName.trim();
+
+        if (normalizedWorldName.isEmpty()) {
+            throw new RuleLoadException(
+                    "World condition cannot be empty."
+            );
+        }
+
+        return new WorldCondition(normalizedWorldName);
     }
 
     private void validateKeys(ConfigurationSection section) {
