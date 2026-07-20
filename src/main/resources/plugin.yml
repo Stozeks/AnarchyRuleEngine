@@ -16,3 +16,6 @@ permissions:
   anarchyruleengine.command.reload:
     description: Allows reloading AnarchyRuleEngine rules.
     default: op
+
+depend:
+  - WorldGuard
