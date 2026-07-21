@@ -33,23 +33,6 @@ public final class RuleReloadService {
     public RuleReloadResult reloadRules() {
         plugin.reloadConfig();
 
-        plugin.getLogger().info(
-                "Reading config from: "
-                        + plugin.getDataFolder().getAbsolutePath()
-                        + "/config.yml"
-        );
-
-        if (plugin.getConfig().getConfigurationSection("rules") == null) {
-            plugin.getLogger().warning("Rules section does not exist.");
-        } else {
-            plugin.getLogger().info(
-                    "Rule IDs found: "
-                            + plugin.getConfig()
-                            .getConfigurationSection("rules")
-                            .getKeys(false)
-            );
-        }
-
         RuleLoader ruleLoader = new RuleLoader(
                 plugin.getConfig(),
                 conditionFactory,
