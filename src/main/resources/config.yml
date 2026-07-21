@@ -3,7 +3,19 @@ debug: false
 settings:
   bypass-permission: "anarchyruleengine.bypass"
 
-items: {}
+items:
+
+  trap:
+    material: STICK
+    name: "&cТрапка"
+    lore:
+      - "&7Тестовый предмет"
+
+  plast:
+    material: BLAZE_ROD
+    name: "&6Пласт"
+    lore:
+      - "&7Еще один тестовый предмет"
 
 rules:
   spawn-right-click-test:

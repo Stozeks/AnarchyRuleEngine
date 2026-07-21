@@ -7,6 +7,8 @@ import me.stozeks.anarchyruleengine.factory.ActionFactory;
 import me.stozeks.anarchyruleengine.factory.ConditionFactory;
 import me.stozeks.anarchyruleengine.listener.PlayerInteractListener;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
+import me.stozeks.anarchyruleengine.item.ItemLoader;
+import me.stozeks.anarchyruleengine.item.ItemRegistry;
 import me.stozeks.anarchyruleengine.loader.RuleLoader;
 import me.stozeks.anarchyruleengine.model.Rule;
 import me.stozeks.anarchyruleengine.service.RuleReloadService;
@@ -22,10 +24,17 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     private ConditionFactory conditionFactory;
     private ActionFactory actionFactory;
+    private ItemRegistry itemRegistry;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+
+        itemRegistry = new ItemLoader().load(getConfig());
+
+        getLogger().info(
+                "Loaded " + itemRegistry.getAll().size() + " custom item(s)."
+        );
 
         conditionFactory = new ConditionFactory();
         actionFactory = new ActionFactory();
@@ -69,6 +78,10 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     public RuleEngine getRuleEngine() {
         return ruleEngine;
+    }
+
+    public ItemRegistry getItemRegistry() {
+        return itemRegistry;
     }
 
     private void registerListeners() {
