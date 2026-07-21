@@ -6,14 +6,16 @@ settings:
 items: {}
 
 rules:
-  # deny-diamond:
-  #   enabled: true
-  #   priority: 100
-  #   stop-processing: true
-  #   conditions:
-  #     material: DIAMOND
-  #     permission: "anarchyruleengine.diamond"
-  #   actions:
-  #     - type: message
-  #       message: "&cYou cannot use diamonds here."
-  #     - type: cancel
+  spawn-right-click-test:
+    enabled: true
+    priority: 100
+    stop-processing: true
+
+    conditions:
+      region: spawn
+      interaction-action: RIGHT_CLICK_BLOCK
+
+    actions:
+      - type: message
+        message: "&aAnarchyRuleEngine работает!"
+      - type: cancel
