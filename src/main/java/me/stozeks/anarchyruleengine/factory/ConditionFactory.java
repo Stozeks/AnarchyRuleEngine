@@ -2,6 +2,7 @@ package me.stozeks.anarchyruleengine.factory;
 import me.stozeks.anarchyruleengine.condition.AlwaysCondition;
 import me.stozeks.anarchyruleengine.condition.MaterialCondition;
 import me.stozeks.anarchyruleengine.condition.PermissionCondition;
+import me.stozeks.anarchyruleengine.condition.YLevelCondition;
 import me.stozeks.anarchyruleengine.condition.RegionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
@@ -24,7 +25,9 @@ public final class ConditionFactory {
                     "material",
                     "permission",
                     "world",
-                    "region"
+                    "region",
+                    "y-min",
+                    "y-max"
             )
     );
 
@@ -45,11 +48,21 @@ public final class ConditionFactory {
         String worldName = section.getString("world");
         String regionName = section.getString("region");
 
+        Integer minY = section.contains("y-min")
+                ? section.getInt("y-min")
+                : null;
+
+        Integer maxY = section.contains("y-max")
+                ? section.getInt("y-max")
+                : null;
+
         if (always && (
                 materialName != null
                         || permission != null
                         || worldName != null
                         || regionName != null
+                        || minY != null
+                        || maxY != null
         )) {
             throw new RuleLoadException(
                     "Condition 'always' cannot be combined with other conditions."
@@ -75,6 +88,10 @@ public final class ConditionFactory {
 
         if (regionName != null) {
             conditions.add(createRegionCondition(regionName));
+        }
+
+        if (minY != null || maxY != null) {
+            conditions.add(createYLevelCondition(minY, maxY));
         }
 
 
@@ -139,6 +156,16 @@ public final class ConditionFactory {
         }
 
         return new RegionCondition(normalizedRegionName);
+    }
+
+    private RuleCondition createYLevelCondition(Integer minY, Integer maxY) {
+        if (minY != null && maxY != null && minY > maxY) {
+            throw new RuleLoadException(
+                    "Condition 'y-min' cannot be greater than 'y-max'."
+            );
+        }
+
+        return new YLevelCondition(minY, maxY);
     }
 
     private void validateKeys(ConfigurationSection section) {
