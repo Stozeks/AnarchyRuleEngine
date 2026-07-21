@@ -2,11 +2,13 @@ package me.stozeks.anarchyruleengine.factory;
 import me.stozeks.anarchyruleengine.condition.AlwaysCondition;
 import me.stozeks.anarchyruleengine.condition.MaterialCondition;
 import me.stozeks.anarchyruleengine.condition.PermissionCondition;
+import me.stozeks.anarchyruleengine.condition.InteractionActionCondition;
 import me.stozeks.anarchyruleengine.condition.YLevelCondition;
 import me.stozeks.anarchyruleengine.condition.RegionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.condition.WorldCondition;
+import org.bukkit.event.block.Action;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -27,7 +29,8 @@ public final class ConditionFactory {
                     "world",
                     "region",
                     "y-min",
-                    "y-max"
+                    "y-max",
+                    "interaction-action"
             )
     );
 
@@ -47,6 +50,7 @@ public final class ConditionFactory {
         String permission = section.getString("permission");
         String worldName = section.getString("world");
         String regionName = section.getString("region");
+        String interactionActionName = section.getString("interaction-action");
 
         Integer minY = section.contains("y-min")
                 ? section.getInt("y-min")
@@ -63,6 +67,7 @@ public final class ConditionFactory {
                         || regionName != null
                         || minY != null
                         || maxY != null
+                        || interactionActionName != null
         )) {
             throw new RuleLoadException(
                     "Condition 'always' cannot be combined with other conditions."
@@ -92,6 +97,10 @@ public final class ConditionFactory {
 
         if (minY != null || maxY != null) {
             conditions.add(createYLevelCondition(minY, maxY));
+        }
+
+        if (interactionActionName != null) {
+            conditions.add(createInteractionActionCondition(interactionActionName));
         }
 
 
@@ -166,6 +175,31 @@ public final class ConditionFactory {
         }
 
         return new YLevelCondition(minY, maxY);
+    }
+
+    private RuleCondition createInteractionActionCondition(String actionName) {
+
+        String normalizedAction = actionName
+                .trim()
+                .toUpperCase(Locale.ROOT);
+
+        if (normalizedAction.isEmpty()) {
+            throw new RuleLoadException(
+                    "Interaction action cannot be empty."
+            );
+        }
+
+        Action action;
+
+        try {
+            action = Action.valueOf(normalizedAction);
+        } catch (IllegalArgumentException exception) {
+            throw new RuleLoadException(
+                    "Unknown interaction action '" + actionName + "'."
+            );
+        }
+
+        return new InteractionActionCondition(action);
     }
 
     private void validateKeys(ConfigurationSection section) {
