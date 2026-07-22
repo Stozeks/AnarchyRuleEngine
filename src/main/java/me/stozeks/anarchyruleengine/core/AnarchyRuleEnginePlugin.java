@@ -89,7 +89,6 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     public RuleEngine getRuleEngine() {
         return ruleEngine;
-
     }
 
     public ItemRegistry getItemRegistry() {
@@ -129,7 +128,10 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
         }
 
         ruleCommand.setExecutor(
-                new RuleCommand(ruleReloadService)
+                new RuleCommand(
+                        ruleReloadService,
+                        itemService
+                )
         );
     }
 
