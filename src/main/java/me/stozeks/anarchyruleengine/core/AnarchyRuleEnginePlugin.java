@@ -47,7 +47,7 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
                 "Loaded " + itemRegistry.getAll().size() + " custom item(s)."
         );
 
-        conditionFactory = new ConditionFactory();
+        conditionFactory = new ConditionFactory(itemService);
         actionFactory = new ActionFactory();
 
         ruleEngine = new RuleEngine(

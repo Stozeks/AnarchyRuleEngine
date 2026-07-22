@@ -8,6 +8,8 @@ import me.stozeks.anarchyruleengine.condition.RegionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.condition.WorldCondition;
+import me.stozeks.anarchyruleengine.condition.ItemCondition;
+import me.stozeks.anarchyruleengine.item.ItemService;
 import org.bukkit.event.block.Action;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -18,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.Objects;
 
 public final class ConditionFactory {
 
@@ -25,6 +28,7 @@ public final class ConditionFactory {
             Arrays.asList(
                     "always",
                     "material",
+                    "item",
                     "permission",
                     "world",
                     "region",
@@ -33,6 +37,15 @@ public final class ConditionFactory {
                     "interaction-action"
             )
     );
+
+    private final ItemService itemService;
+
+    public ConditionFactory(ItemService itemService) {
+        this.itemService = Objects.requireNonNull(
+                itemService,
+                "itemService"
+        );
+    }
 
     public List<RuleCondition> createConditions(
             ConfigurationSection section
@@ -47,6 +60,7 @@ public final class ConditionFactory {
 
         boolean always = section.getBoolean("always", false);
         String materialName = section.getString("material");
+        String itemId = section.getString("item");
         String permission = section.getString("permission");
         String worldName = section.getString("world");
         String regionName = section.getString("region");
@@ -62,6 +76,7 @@ public final class ConditionFactory {
 
         if (always && (
                 materialName != null
+                        || itemId != null
                         || permission != null
                         || worldName != null
                         || regionName != null
@@ -77,6 +92,10 @@ public final class ConditionFactory {
         if (always) {
             conditions.add(new AlwaysCondition());
             return conditions;
+        }
+
+        if (itemId != null) {
+            conditions.add(createItemCondition(itemId));
         }
 
         if (materialName != null) {
@@ -129,6 +148,27 @@ public final class ConditionFactory {
         }
 
         return new MaterialCondition(material);
+    }
+
+    private RuleCondition createItemCondition(String itemId) {
+        String normalizedItemId = itemId.trim();
+
+        if (normalizedItemId.isEmpty()) {
+            throw new RuleLoadException(
+                    "Item condition cannot be empty."
+            );
+        }
+
+        if (itemService.getCustomItem(normalizedItemId) == null) {
+            throw new RuleLoadException(
+                    "Unknown custom item '" + itemId + "'."
+            );
+        }
+
+        return new ItemCondition(
+                itemService,
+                normalizedItemId
+        );
     }
 
     private RuleCondition createPermissionCondition(String permission) {

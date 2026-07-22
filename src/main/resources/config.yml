@@ -24,10 +24,11 @@ rules:
     stop-processing: true
 
     conditions:
+      item: trap
       region: spawn
       interaction-action: RIGHT_CLICK_BLOCK
 
     actions:
       - type: message
-        message: "&aAnarchyRuleEngine работает!"
+        message: "&aСработало правило для трапки!"
       - type: cancel
