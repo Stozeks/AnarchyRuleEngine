@@ -9,7 +9,7 @@ import me.stozeks.anarchyruleengine.condition.RuleCondition;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.condition.WorldCondition;
 import me.stozeks.anarchyruleengine.condition.ItemCondition;
-import me.stozeks.anarchyruleengine.item.ItemService;
+import me.stozeks.anarchyruleengine.service.ConditionServices;
 import org.bukkit.event.block.Action;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -38,12 +38,12 @@ public final class ConditionFactory {
             )
     );
 
-    private final ItemService itemService;
+    private final ConditionServices services;
 
-    public ConditionFactory(ItemService itemService) {
-        this.itemService = Objects.requireNonNull(
-                itemService,
-                "itemService"
+    public ConditionFactory(ConditionServices services) {
+        this.services = Objects.requireNonNull(
+                services,
+                "services"
         );
     }
 
@@ -159,14 +159,14 @@ public final class ConditionFactory {
             );
         }
 
-        if (itemService.getCustomItem(normalizedItemId) == null) {
+        if (services.getItemService().getCustomItem(normalizedItemId) == null) {
             throw new RuleLoadException(
                     "Unknown custom item '" + itemId + "'."
             );
         }
 
         return new ItemCondition(
-                itemService,
+                services.getItemService(),
                 normalizedItemId
         );
     }

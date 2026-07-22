@@ -4,13 +4,24 @@ import me.stozeks.anarchyruleengine.action.CancelAction;
 import me.stozeks.anarchyruleengine.action.MessageAction;
 import me.stozeks.anarchyruleengine.action.RuleAction;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
+import me.stozeks.anarchyruleengine.service.ActionServices;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 public final class ActionFactory {
+
+    private final ActionServices services;
+
+    public ActionFactory(ActionServices services) {
+        this.services = Objects.requireNonNull(
+                services,
+                "services"
+        );
+    }
 
     public List<RuleAction> createActions(
             List<Map<?, ?>> configuredActions
@@ -52,7 +63,9 @@ public final class ActionFactory {
                 return new CancelAction();
 
             case "message":
-                return new MessageAction(readMessage(actionData));
+                return new MessageAction(
+                        readMessage(actionData)
+                );
 
             default:
                 throw new RuleLoadException(

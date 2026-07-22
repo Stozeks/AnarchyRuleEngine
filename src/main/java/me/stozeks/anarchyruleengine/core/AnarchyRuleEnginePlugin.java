@@ -5,14 +5,16 @@ import me.stozeks.anarchyruleengine.engine.RuleEngine;
 import me.stozeks.anarchyruleengine.executor.RuleExecutor;
 import me.stozeks.anarchyruleengine.factory.ActionFactory;
 import me.stozeks.anarchyruleengine.factory.ConditionFactory;
-import me.stozeks.anarchyruleengine.listener.PlayerInteractListener;
-import me.stozeks.anarchyruleengine.loader.RuleLoadException;
+import me.stozeks.anarchyruleengine.item.ItemBuilder;
 import me.stozeks.anarchyruleengine.item.ItemLoader;
 import me.stozeks.anarchyruleengine.item.ItemRegistry;
-import me.stozeks.anarchyruleengine.item.ItemBuilder;
 import me.stozeks.anarchyruleengine.item.ItemService;
+import me.stozeks.anarchyruleengine.listener.PlayerInteractListener;
+import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.loader.RuleLoader;
 import me.stozeks.anarchyruleengine.model.Rule;
+import me.stozeks.anarchyruleengine.service.ActionServices;
+import me.stozeks.anarchyruleengine.service.ConditionServices;
 import me.stozeks.anarchyruleengine.service.RuleReloadService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -26,6 +28,7 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     private ConditionFactory conditionFactory;
     private ActionFactory actionFactory;
+
     private ItemRegistry itemRegistry;
     private ItemBuilder itemBuilder;
     private ItemService itemService;
@@ -47,8 +50,21 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
                 "Loaded " + itemRegistry.getAll().size() + " custom item(s)."
         );
 
-        conditionFactory = new ConditionFactory(itemService);
-        actionFactory = new ActionFactory();
+        ConditionServices conditionServices = new ConditionServices(
+                itemService
+        );
+
+        ActionServices actionServices = new ActionServices(
+                itemService
+        );
+
+        conditionFactory = new ConditionFactory(
+                conditionServices
+        );
+
+        actionFactory = new ActionFactory(
+                actionServices
+        );
 
         ruleEngine = new RuleEngine(
                 new RuleExecutor(),
