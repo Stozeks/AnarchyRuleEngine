@@ -2,6 +2,7 @@ package me.stozeks.anarchyruleengine.factory;
 
 import me.stozeks.anarchyruleengine.action.CancelAction;
 import me.stozeks.anarchyruleengine.action.MessageAction;
+import me.stozeks.anarchyruleengine.action.RemoveItemAction;
 import me.stozeks.anarchyruleengine.action.RuleAction;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.service.ActionServices;
@@ -67,6 +68,11 @@ public final class ActionFactory {
                         readMessage(actionData)
                 );
 
+            case "remove-item":
+                return new RemoveItemAction(
+                        readPositiveAmount(actionData)
+                );
+
             default:
                 throw new RuleLoadException(
                         "Unknown action type '" + type + "'."
@@ -92,5 +98,25 @@ public final class ActionFactory {
         }
 
         return message;
+    }
+
+    private int readPositiveAmount(Map<?, ?> actionData) {
+        Object amountValue = actionData.get("amount");
+
+        if (!(amountValue instanceof Number)) {
+            throw new RuleLoadException(
+                    "Remove-item action requires a numeric amount."
+            );
+        }
+
+        int amount = ((Number) amountValue).intValue();
+
+        if (amount <= 0) {
+            throw new RuleLoadException(
+                    "Remove-item amount must be greater than zero."
+            );
+        }
+
+        return amount;
     }
 }

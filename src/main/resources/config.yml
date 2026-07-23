@@ -30,5 +30,9 @@ rules:
 
     actions:
       - type: message
-        message: "&aСработало правило для трапки!"
+        message: "&aТрапка использована!"
+
+      - type: remove-item
+        amount: 1
+
       - type: cancel
