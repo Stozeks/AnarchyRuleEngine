@@ -3,6 +3,7 @@ package me.stozeks.anarchyruleengine.factory;
 import me.stozeks.anarchyruleengine.action.CancelAction;
 import me.stozeks.anarchyruleengine.action.MessageAction;
 import me.stozeks.anarchyruleengine.action.RemoveItemAction;
+import me.stozeks.anarchyruleengine.action.CooldownAction;
 import me.stozeks.anarchyruleengine.action.RuleAction;
 import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.service.ActionServices;
@@ -65,12 +66,21 @@ public final class ActionFactory {
 
             case "message":
                 return new MessageAction(
+                        services.getPlaceholderService(),
                         readMessage(actionData)
                 );
 
             case "remove-item":
                 return new RemoveItemAction(
                         readPositiveAmount(actionData)
+                );
+
+            case "cooldown":
+                return new CooldownAction(
+                        services.getCooldownService(),
+                        services.getItemService(),
+                        readCooldownId(actionData),
+                        readCooldownSeconds(actionData)
                 );
 
             default:
@@ -98,6 +108,56 @@ public final class ActionFactory {
         }
 
         return message;
+    }
+
+    private String readCooldownId(
+            Map<?, ?> actionData
+    ) {
+        Object idValue = actionData.get("id");
+
+        if (idValue == null) {
+            return null;
+        }
+
+        if (!(idValue instanceof String)) {
+            throw new RuleLoadException(
+                    "Cooldown id must be a string."
+            );
+        }
+
+        String id = ((String) idValue)
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (id.isEmpty()) {
+            throw new RuleLoadException(
+                    "Cooldown id cannot be empty."
+            );
+        }
+
+        return id;
+    }
+
+    private long readCooldownSeconds(
+            Map<?, ?> actionData
+    ) {
+        Object secondsValue = actionData.get("seconds");
+
+        if (!(secondsValue instanceof Number)) {
+            throw new RuleLoadException(
+                    "Cooldown action requires seconds."
+            );
+        }
+
+        long seconds = ((Number) secondsValue).longValue();
+
+        if (seconds <= 0) {
+            throw new RuleLoadException(
+                    "Cooldown seconds must be greater than zero."
+            );
+        }
+
+        return seconds;
     }
 
     private int readPositiveAmount(Map<?, ?> actionData) {

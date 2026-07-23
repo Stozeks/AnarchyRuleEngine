@@ -16,11 +16,18 @@ import me.stozeks.anarchyruleengine.model.Rule;
 import me.stozeks.anarchyruleengine.service.ActionServices;
 import me.stozeks.anarchyruleengine.service.ConditionServices;
 import me.stozeks.anarchyruleengine.service.RuleReloadService;
+import me.stozeks.anarchyruleengine.service.CooldownService;
+import me.stozeks.anarchyruleengine.placeholder.PlaceholderService;
+import me.stozeks.anarchyruleengine.placeholder.PlayerPlaceholderResolver;
+import me.stozeks.anarchyruleengine.placeholder.WorldPlaceholderResolver;
+import me.stozeks.anarchyruleengine.placeholder.PositionPlaceholderResolver;
+import me.stozeks.anarchyruleengine.placeholder.CooldownPlaceholderResolver;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Arrays;
 
 public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
@@ -32,6 +39,8 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
     private ItemRegistry itemRegistry;
     private ItemBuilder itemBuilder;
     private ItemService itemService;
+    private CooldownService cooldownService;
+    private PlaceholderService placeholderService;
 
     @Override
     public void onEnable() {
@@ -46,17 +55,33 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
                 itemBuilder
         );
 
-        getLogger().info(
-                "Loaded " + itemRegistry.getAll().size() + " custom item(s)."
-        );
+        cooldownService =
+                new CooldownService();
 
-        ConditionServices conditionServices = new ConditionServices(
-                itemService
-        );
+        ConditionServices conditionServices =
+                new ConditionServices(
+                        itemService,
+                        cooldownService
+                );
 
-        ActionServices actionServices = new ActionServices(
-                itemService
-        );
+        placeholderService =
+                new PlaceholderService(
+                        Arrays.asList(
+                                new PlayerPlaceholderResolver(),
+                                new WorldPlaceholderResolver(),
+                                new PositionPlaceholderResolver(),
+                                new CooldownPlaceholderResolver(
+                                        cooldownService
+                                )
+                        )
+                );
+
+        ActionServices actionServices =
+                new ActionServices(
+                        itemService,
+                        cooldownService,
+                        placeholderService
+                );
 
         conditionFactory = new ConditionFactory(
                 conditionServices
@@ -98,6 +123,11 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+
+        if (cooldownService != null) {
+            cooldownService.clearAllCooldowns();
+        }
+
         getLogger().info(
                 "AnarchyRuleEngine has been disabled."
         );
@@ -117,6 +147,14 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
     public ItemService getItemService() {
         return itemService;
+    }
+
+    public CooldownService getCooldownService() {
+        return cooldownService;
+    }
+
+    public PlaceholderService getPlaceholderService() {
+        return placeholderService;
     }
 
     private void registerListeners() {

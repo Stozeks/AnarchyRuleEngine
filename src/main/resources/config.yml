@@ -4,7 +4,6 @@ settings:
   bypass-permission: "anarchyruleengine.bypass"
 
 items:
-
   trap:
     material: STICK
     name: "&cТрапка"
@@ -18,19 +17,85 @@ items:
       - "&7Еще один тестовый предмет"
 
 rules:
-  spawn-right-click-test:
+
+  trap-cooldown-message:
+    enabled: true
+    priority: 400
+    stop-processing: true
+
+    conditions:
+      item: trap
+      interaction-action:
+        - RIGHT_CLICK_AIR
+        - RIGHT_CLICK_BLOCK
+      on-cooldown: trap
+
+    actions:
+      - type: message
+        message: "&cТрапка будет доступна через &e%cooldown:trap% &cсек."
+
+      - type: cancel
+
+  trap-use:
+    enabled: true
+    priority: 300
+    stop-processing: true
+
+    conditions:
+      item: trap
+      interaction-action:
+        - RIGHT_CLICK_AIR
+        - RIGHT_CLICK_BLOCK
+      cooldown: trap
+
+    actions:
+      - type: cooldown
+        seconds: 30
+
+      - type: message
+        message: "&aТрапка использована!"
+
+      - type: remove-item
+        amount: 1
+
+      - type: cancel
+
+  plast-cooldown-message:
+    enabled: true
+    priority: 200
+    stop-processing: true
+
+    conditions:
+      item: plast
+      interaction-action:
+        - RIGHT_CLICK_AIR
+        - RIGHT_CLICK_BLOCK
+      on-cooldown: plast
+
+    actions:
+      - type: message
+        message: "&cПласт будет доступен через &e%cooldown:plast% &cсек."
+
+      - type: cancel
+
+  plast-use:
     enabled: true
     priority: 100
     stop-processing: true
 
     conditions:
-      item: trap
-      region: spawn
-      interaction-action: RIGHT_CLICK_BLOCK
+      item: plast
+      interaction-action:
+        - RIGHT_CLICK_AIR
+        - RIGHT_CLICK_BLOCK
+      cooldown: plast
 
     actions:
+      - type: cooldown
+        seconds: 20
+
       - type: message
-        message: "&aТрапка использована!"
+        message: "&aПласт использован!"
 
       - type: remove-item
         amount: 1

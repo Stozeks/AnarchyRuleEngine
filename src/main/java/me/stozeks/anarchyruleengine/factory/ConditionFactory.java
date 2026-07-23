@@ -1,26 +1,30 @@
 package me.stozeks.anarchyruleengine.factory;
+
 import me.stozeks.anarchyruleengine.condition.AlwaysCondition;
-import me.stozeks.anarchyruleengine.condition.MaterialCondition;
-import me.stozeks.anarchyruleengine.condition.PermissionCondition;
+import me.stozeks.anarchyruleengine.condition.CooldownCondition;
 import me.stozeks.anarchyruleengine.condition.InteractionActionCondition;
-import me.stozeks.anarchyruleengine.condition.YLevelCondition;
+import me.stozeks.anarchyruleengine.condition.ItemCondition;
+import me.stozeks.anarchyruleengine.condition.MaterialCondition;
+import me.stozeks.anarchyruleengine.condition.OnCooldownCondition;
+import me.stozeks.anarchyruleengine.condition.PermissionCondition;
 import me.stozeks.anarchyruleengine.condition.RegionCondition;
 import me.stozeks.anarchyruleengine.condition.RuleCondition;
-import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.condition.WorldCondition;
-import me.stozeks.anarchyruleengine.condition.ItemCondition;
+import me.stozeks.anarchyruleengine.condition.YLevelCondition;
+import me.stozeks.anarchyruleengine.loader.RuleLoadException;
 import me.stozeks.anarchyruleengine.service.ConditionServices;
-import org.bukkit.event.block.Action;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.event.block.Action;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.Objects;
+import java.util.Set;
 
 public final class ConditionFactory {
 
@@ -34,7 +38,9 @@ public final class ConditionFactory {
                     "region",
                     "y-min",
                     "y-max",
-                    "interaction-action"
+                    "interaction-action",
+                    "cooldown",
+                    "on-cooldown"
             )
     );
 
@@ -59,12 +65,17 @@ public final class ConditionFactory {
         validateKeys(section);
 
         boolean always = section.getBoolean("always", false);
+
         String materialName = section.getString("material");
         String itemId = section.getString("item");
         String permission = section.getString("permission");
         String worldName = section.getString("world");
         String regionName = section.getString("region");
-        String interactionActionName = section.getString("interaction-action");
+        String cooldownId = section.getString("cooldown");
+        String onCooldownId = section.getString("on-cooldown");
+
+        Object interactionActionValue =
+                section.get("interaction-action");
 
         Integer minY = section.contains("y-min")
                 ? section.getInt("y-min")
@@ -82,7 +93,9 @@ public final class ConditionFactory {
                         || regionName != null
                         || minY != null
                         || maxY != null
-                        || interactionActionName != null
+                        || interactionActionValue != null
+                        || cooldownId != null
+                        || onCooldownId != null
         )) {
             throw new RuleLoadException(
                     "Condition 'always' cannot be combined with other conditions."
@@ -115,20 +128,40 @@ public final class ConditionFactory {
         }
 
         if (minY != null || maxY != null) {
-            conditions.add(createYLevelCondition(minY, maxY));
+            conditions.add(
+                    createYLevelCondition(
+                            minY,
+                            maxY
+                    )
+            );
         }
 
-        if (interactionActionName != null) {
-            conditions.add(createInteractionActionCondition(interactionActionName));
+        if (interactionActionValue != null) {
+            conditions.add(
+                    createInteractionActionCondition(
+                            interactionActionValue
+                    )
+            );
         }
 
+        if (cooldownId != null) {
+            conditions.add(
+                    createCooldownCondition(cooldownId)
+            );
+        }
 
-
+        if (onCooldownId != null) {
+            conditions.add(
+                    createOnCooldownCondition(onCooldownId)
+            );
+        }
 
         return conditions;
     }
 
-    private RuleCondition createMaterialCondition(String materialName) {
+    private RuleCondition createMaterialCondition(
+            String materialName
+    ) {
         String normalizedName = materialName
                 .trim()
                 .toUpperCase(Locale.ROOT);
@@ -139,7 +172,8 @@ public final class ConditionFactory {
             );
         }
 
-        Material material = Material.matchMaterial(normalizedName);
+        Material material =
+                Material.matchMaterial(normalizedName);
 
         if (material == null) {
             throw new RuleLoadException(
@@ -150,7 +184,9 @@ public final class ConditionFactory {
         return new MaterialCondition(material);
     }
 
-    private RuleCondition createItemCondition(String itemId) {
+    private RuleCondition createItemCondition(
+            String itemId
+    ) {
         String normalizedItemId = itemId.trim();
 
         if (normalizedItemId.isEmpty()) {
@@ -159,7 +195,8 @@ public final class ConditionFactory {
             );
         }
 
-        if (services.getItemService().getCustomItem(normalizedItemId) == null) {
+        if (services.getItemService()
+                .getCustomItem(normalizedItemId) == null) {
             throw new RuleLoadException(
                     "Unknown custom item '" + itemId + "'."
             );
@@ -171,8 +208,11 @@ public final class ConditionFactory {
         );
     }
 
-    private RuleCondition createPermissionCondition(String permission) {
-        String normalizedPermission = permission.trim();
+    private RuleCondition createPermissionCondition(
+            String permission
+    ) {
+        String normalizedPermission =
+                permission.trim();
 
         if (normalizedPermission.isEmpty()) {
             throw new RuleLoadException(
@@ -180,11 +220,16 @@ public final class ConditionFactory {
             );
         }
 
-        return new PermissionCondition(normalizedPermission);
+        return new PermissionCondition(
+                normalizedPermission
+        );
     }
 
-    private RuleCondition createWorldCondition(String worldName) {
-        String normalizedWorldName = worldName.trim();
+    private RuleCondition createWorldCondition(
+            String worldName
+    ) {
+        String normalizedWorldName =
+                worldName.trim();
 
         if (normalizedWorldName.isEmpty()) {
             throw new RuleLoadException(
@@ -192,11 +237,16 @@ public final class ConditionFactory {
             );
         }
 
-        return new WorldCondition(normalizedWorldName);
+        return new WorldCondition(
+                normalizedWorldName
+        );
     }
 
-    private RuleCondition createRegionCondition(String regionName) {
-        String normalizedRegionName = regionName.trim();
+    private RuleCondition createRegionCondition(
+            String regionName
+    ) {
+        String normalizedRegionName =
+                regionName.trim();
 
         if (normalizedRegionName.isEmpty()) {
             throw new RuleLoadException(
@@ -204,21 +254,76 @@ public final class ConditionFactory {
             );
         }
 
-        return new RegionCondition(normalizedRegionName);
+        return new RegionCondition(
+                normalizedRegionName
+        );
     }
 
-    private RuleCondition createYLevelCondition(Integer minY, Integer maxY) {
-        if (minY != null && maxY != null && minY > maxY) {
+    private RuleCondition createYLevelCondition(
+            Integer minY,
+            Integer maxY
+    ) {
+        if (minY != null
+                && maxY != null
+                && minY > maxY) {
             throw new RuleLoadException(
                     "Condition 'y-min' cannot be greater than 'y-max'."
             );
         }
 
-        return new YLevelCondition(minY, maxY);
+        return new YLevelCondition(
+                minY,
+                maxY
+        );
     }
 
-    private RuleCondition createInteractionActionCondition(String actionName) {
+    private RuleCondition createInteractionActionCondition(
+            Object configuredValue
+    ) {
+        Set<Action> actions =
+                EnumSet.noneOf(Action.class);
 
+        if (configuredValue instanceof String) {
+            actions.add(
+                    parseInteractionAction(
+                            (String) configuredValue
+                    )
+            );
+        } else if (configuredValue instanceof List<?>) {
+            List<?> configuredActions =
+                    (List<?>) configuredValue;
+
+            if (configuredActions.isEmpty()) {
+                throw new RuleLoadException(
+                        "Interaction action list cannot be empty."
+                );
+            }
+
+            for (Object actionValue : configuredActions) {
+                if (!(actionValue instanceof String)) {
+                    throw new RuleLoadException(
+                            "Every interaction action must be a string."
+                    );
+                }
+
+                actions.add(
+                        parseInteractionAction(
+                                (String) actionValue
+                        )
+                );
+            }
+        } else {
+            throw new RuleLoadException(
+                    "Interaction action must be a string or a list."
+            );
+        }
+
+        return new InteractionActionCondition(actions);
+    }
+
+    private Action parseInteractionAction(
+            String actionName
+    ) {
         String normalizedAction = actionName
                 .trim()
                 .toUpperCase(Locale.ROOT);
@@ -229,20 +334,57 @@ public final class ConditionFactory {
             );
         }
 
-        Action action;
-
         try {
-            action = Action.valueOf(normalizedAction);
+            return Action.valueOf(normalizedAction);
         } catch (IllegalArgumentException exception) {
             throw new RuleLoadException(
-                    "Unknown interaction action '" + actionName + "'."
+                    "Unknown interaction action '"
+                            + actionName + "'."
+            );
+        }
+    }
+
+    private RuleCondition createCooldownCondition(
+            String cooldownId
+    ) {
+        String normalizedCooldownId = cooldownId
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (normalizedCooldownId.isEmpty()) {
+            throw new RuleLoadException(
+                    "Cooldown condition cannot be empty."
             );
         }
 
-        return new InteractionActionCondition(action);
+        return new CooldownCondition(
+                services.getCooldownService(),
+                normalizedCooldownId
+        );
     }
 
-    private void validateKeys(ConfigurationSection section) {
+    private RuleCondition createOnCooldownCondition(
+            String cooldownId
+    ) {
+        String normalizedCooldownId = cooldownId
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        if (normalizedCooldownId.isEmpty()) {
+            throw new RuleLoadException(
+                    "On-cooldown condition cannot be empty."
+            );
+        }
+
+        return new OnCooldownCondition(
+                services.getCooldownService(),
+                normalizedCooldownId
+        );
+    }
+
+    private void validateKeys(
+            ConfigurationSection section
+    ) {
         for (String key : section.getKeys(false)) {
             if (!SUPPORTED_KEYS.contains(key)) {
                 throw new RuleLoadException(
