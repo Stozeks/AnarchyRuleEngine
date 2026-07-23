@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public final class ItemRegistry {
 
@@ -27,6 +28,10 @@ public final class ItemRegistry {
 
     public Collection<CustomItem> getAll() {
         return Collections.unmodifiableCollection(items.values());
+    }
+
+    public Set<String> getItemIds() {
+        return Collections.unmodifiableSet(items.keySet());
     }
 
     public void clear() {

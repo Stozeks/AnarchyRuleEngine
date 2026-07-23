@@ -15,7 +15,9 @@ import me.stozeks.anarchyruleengine.loader.RuleLoader;
 import me.stozeks.anarchyruleengine.model.Rule;
 import me.stozeks.anarchyruleengine.service.ActionServices;
 import me.stozeks.anarchyruleengine.service.ConditionServices;
+import me.stozeks.anarchyruleengine.service.DebugService;
 import me.stozeks.anarchyruleengine.service.RuleReloadService;
+import me.stozeks.anarchyruleengine.service.RuleInspectorService;
 import me.stozeks.anarchyruleengine.service.CooldownService;
 import me.stozeks.anarchyruleengine.placeholder.PlaceholderService;
 import me.stozeks.anarchyruleengine.placeholder.PlayerPlaceholderResolver;
@@ -41,12 +43,23 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
     private ItemService itemService;
     private CooldownService cooldownService;
     private PlaceholderService placeholderService;
+    private DebugService debugService;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
-        itemRegistry = new ItemLoader().load(getConfig());
+        try {
+            itemRegistry = new ItemLoader().load(getConfig());
+        } catch (RuleLoadException exception) {
+            getLogger().severe(
+                    "Could not load custom items: "
+                            + exception.getMessage()
+            );
+
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
 
         itemBuilder = new ItemBuilder(this);
 
@@ -57,6 +70,8 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
 
         cooldownService =
                 new CooldownService();
+
+        debugService = new DebugService();
 
         ConditionServices conditionServices =
                 new ConditionServices(
@@ -92,7 +107,7 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
         );
 
         ruleEngine = new RuleEngine(
-                new RuleExecutor(),
+                new RuleExecutor(getLogger()),
                 Collections.emptyList()
         );
 
@@ -128,6 +143,10 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
             cooldownService.clearAllCooldowns();
         }
 
+        if (debugService != null) {
+            debugService.clear();
+        }
+
         getLogger().info(
                 "AnarchyRuleEngine has been disabled."
         );
@@ -138,7 +157,9 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
     }
 
     public ItemRegistry getItemRegistry() {
-        return itemRegistry;
+        return itemService != null
+                ? itemService.getItemRegistry()
+                : itemRegistry;
     }
 
     public ItemBuilder getItemBuilder() {
@@ -157,9 +178,17 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
         return placeholderService;
     }
 
+    public ConditionFactory getConditionFactory() {
+        return conditionFactory;
+    }
+
+    public ActionFactory getActionFactory() {
+        return actionFactory;
+    }
+
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(
-                new PlayerInteractListener(ruleEngine),
+                new PlayerInteractListener(ruleEngine, debugService),
                 this
         );
     }
@@ -169,6 +198,7 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
                 new RuleReloadService(
                         this,
                         ruleEngine,
+                        itemService,
                         conditionFactory,
                         actionFactory
                 );
@@ -181,12 +211,16 @@ public final class AnarchyRuleEnginePlugin extends JavaPlugin {
             );
         }
 
-        ruleCommand.setExecutor(
-                new RuleCommand(
-                        ruleReloadService,
-                        itemService
-                )
+        RuleCommand executor = new RuleCommand(
+                ruleReloadService,
+                itemService,
+                new RuleInspectorService(ruleEngine),
+                debugService,
+                getDescription().getVersion()
         );
+
+        ruleCommand.setExecutor(executor);
+        ruleCommand.setTabCompleter(executor);
     }
 
     private RuleLoader createRuleLoader() {

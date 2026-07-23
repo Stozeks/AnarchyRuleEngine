@@ -16,7 +16,7 @@ public final class RegionCondition implements RuleCondition {
     @Override
     public boolean matches(InteractionContext context) {
         return regionService.isInsideRegion(
-                context.getPlayer().getLocation(),
+                context.getLocation(),
                 regionName
         );
     }

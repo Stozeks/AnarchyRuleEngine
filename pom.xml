@@ -9,7 +9,7 @@
 
     <groupId>me.stozeks</groupId>
     <artifactId>anarchy-rule-engine</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <name>AnarchyRuleEngine</name>
     <description>A configurable rule engine for Paper 1.16.5 servers.</description>

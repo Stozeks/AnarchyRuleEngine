@@ -8,7 +8,7 @@ import java.util.Objects;
 
 public final class ItemService {
 
-    private final ItemRegistry itemRegistry;
+    private ItemRegistry itemRegistry;
     private final ItemBuilder itemBuilder;
 
     public ItemService(
@@ -111,5 +111,16 @@ public final class ItemService {
 
     public String getCustomItemId(ItemStack itemStack) {
         return itemBuilder.getCustomItemId(itemStack);
+    }
+
+    public ItemRegistry getItemRegistry() {
+        return itemRegistry;
+    }
+
+    public void replaceItemRegistry(ItemRegistry itemRegistry) {
+        this.itemRegistry = Objects.requireNonNull(
+                itemRegistry,
+                "itemRegistry"
+        );
     }
 }

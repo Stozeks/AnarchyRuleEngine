@@ -8,7 +8,7 @@ description: A configurable rule engine for Paper 1.16.5 servers.
 commands:
   are:
     description: Main AnarchyRuleEngine command.
-    usage: /are <reload|give>
+    usage: /are <help|version|reload|give|rules|inspect|debug>
     aliases:
       - anarchyruleengine
 
@@ -19,6 +19,14 @@ permissions:
 
   anarchyruleengine.command.give:
     description: Allows giving custom AnarchyRuleEngine items.
+    default: op
+
+  anarchyruleengine.command.inspect:
+    description: Allows listing and inspecting loaded rules.
+    default: op
+
+  anarchyruleengine.command.debug:
+    description: Allows toggling rule execution debug traces.
     default: op
 
 depend:

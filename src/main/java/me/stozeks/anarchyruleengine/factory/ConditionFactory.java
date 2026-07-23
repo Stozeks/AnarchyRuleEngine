@@ -19,284 +19,298 @@ import org.bukkit.event.block.Action;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 public final class ConditionFactory {
 
-    private static final Set<String> SUPPORTED_KEYS = new HashSet<>(
-            Arrays.asList(
-                    "always",
-                    "material",
-                    "item",
-                    "permission",
-                    "world",
-                    "region",
-                    "y-min",
-                    "y-max",
-                    "interaction-action",
-                    "cooldown",
-                    "on-cooldown"
-            )
-    );
-
-    private final ConditionServices services;
-
-    public ConditionFactory(ConditionServices services) {
-        this.services = Objects.requireNonNull(
-                services,
-                "services"
-        );
+    @FunctionalInterface
+    public interface ConditionCreator {
+        RuleCondition create(ConfigurationSection section);
     }
 
-    public List<RuleCondition> createConditions(
-            ConfigurationSection section
+    private static final class RegisteredCondition {
+        private final Set<String> keys;
+        private final ConditionCreator creator;
+
+        private RegisteredCondition(Set<String> keys, ConditionCreator creator) {
+            this.keys = keys;
+            this.creator = creator;
+        }
+
+        private boolean isConfigured(ConfigurationSection section) {
+            for (String key : keys) {
+                if (section.contains(key)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+    }
+
+    private final ConditionServices services;
+    private final Map<String, RegisteredCondition> conditions = new LinkedHashMap<>();
+    private final Set<String> supportedKeys = new LinkedHashSet<>();
+
+    public ConditionFactory(ConditionServices services) {
+        this.services = Objects.requireNonNull(services, "services");
+        registerBuiltInConditions();
+    }
+
+    public void registerCondition(
+            String id,
+            Collection<String> keys,
+            ConditionCreator creator
     ) {
-        List<RuleCondition> conditions = new ArrayList<>();
+        String normalizedId = normalizeIdentifier(id, "Condition registration id");
+        Objects.requireNonNull(keys, "keys");
+        Objects.requireNonNull(creator, "creator");
+
+        if (conditions.containsKey(normalizedId)) {
+            throw new IllegalArgumentException(
+                    "Condition registration '" + normalizedId + "' already exists."
+            );
+        }
+
+        Set<String> normalizedKeys = new LinkedHashSet<>();
+
+        for (String key : keys) {
+            String normalizedKey = normalizeIdentifier(key, "Condition key");
+
+            if (supportedKeys.contains(normalizedKey)) {
+                throw new IllegalArgumentException(
+                        "Condition key '" + normalizedKey + "' is already registered."
+                );
+            }
+
+            normalizedKeys.add(normalizedKey);
+        }
+
+        if (normalizedKeys.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Condition registration must contain at least one key."
+            );
+        }
+
+        conditions.put(
+                normalizedId,
+                new RegisteredCondition(normalizedKeys, creator)
+        );
+        supportedKeys.addAll(normalizedKeys);
+    }
+
+    public Set<String> getSupportedConditionKeys() {
+        return Collections.unmodifiableSet(supportedKeys);
+    }
+
+    public List<RuleCondition> createConditions(ConfigurationSection section) {
+        List<RuleCondition> createdConditions = new ArrayList<>();
 
         if (section == null) {
-            return conditions;
+            return createdConditions;
         }
 
         validateKeys(section);
 
-        boolean always = section.getBoolean("always", false);
+        boolean always = false;
 
-        String materialName = section.getString("material");
-        String itemId = section.getString("item");
-        String permission = section.getString("permission");
-        String worldName = section.getString("world");
-        String regionName = section.getString("region");
-        String cooldownId = section.getString("cooldown");
-        String onCooldownId = section.getString("on-cooldown");
-
-        Object interactionActionValue =
-                section.get("interaction-action");
-
-        Integer minY = section.contains("y-min")
-                ? section.getInt("y-min")
-                : null;
-
-        Integer maxY = section.contains("y-max")
-                ? section.getInt("y-max")
-                : null;
-
-        if (always && (
-                materialName != null
-                        || itemId != null
-                        || permission != null
-                        || worldName != null
-                        || regionName != null
-                        || minY != null
-                        || maxY != null
-                        || interactionActionValue != null
-                        || cooldownId != null
-                        || onCooldownId != null
-        )) {
-            throw new RuleLoadException(
-                    "Condition 'always' cannot be combined with other conditions."
-            );
+        if (section.contains("always")) {
+            Object alwaysValue = section.get("always");
+            if (!(alwaysValue instanceof Boolean)) {
+                throw new RuleLoadException("Condition 'always' must be true or false.");
+            }
+            always = (Boolean) alwaysValue;
         }
 
         if (always) {
-            conditions.add(new AlwaysCondition());
-            return conditions;
+            if (section.getKeys(false).size() != 1) {
+                throw new RuleLoadException(
+                        "Condition 'always' cannot be combined with other conditions."
+                );
+            }
+
+            createdConditions.add(new AlwaysCondition());
+            return createdConditions;
         }
 
-        if (itemId != null) {
-            conditions.add(createItemCondition(itemId));
+        for (Map.Entry<String, RegisteredCondition> entry : conditions.entrySet()) {
+            if ("always".equals(entry.getKey())) {
+                continue;
+            }
+
+            RegisteredCondition registered = entry.getValue();
+
+            if (!registered.isConfigured(section)) {
+                continue;
+            }
+
+            try {
+                RuleCondition condition = registered.creator.create(section);
+
+                if (condition == null) {
+                    throw new RuleLoadException(
+                            "Condition creator '" + entry.getKey() + "' returned null."
+                    );
+                }
+
+                createdConditions.add(condition);
+            } catch (RuleLoadException exception) {
+                throw exception;
+            } catch (RuntimeException exception) {
+                throw new RuleLoadException(
+                        "Unexpected error in condition '" + entry.getKey()
+                                + "': " + exception.getMessage(),
+                        exception
+                );
+            }
         }
 
-        if (materialName != null) {
-            conditions.add(createMaterialCondition(materialName));
-        }
-
-        if (permission != null) {
-            conditions.add(createPermissionCondition(permission));
-        }
-
-        if (worldName != null) {
-            conditions.add(createWorldCondition(worldName));
-        }
-
-        if (regionName != null) {
-            conditions.add(createRegionCondition(regionName));
-        }
-
-        if (minY != null || maxY != null) {
-            conditions.add(
-                    createYLevelCondition(
-                            minY,
-                            maxY
-                    )
-            );
-        }
-
-        if (interactionActionValue != null) {
-            conditions.add(
-                    createInteractionActionCondition(
-                            interactionActionValue
-                    )
-            );
-        }
-
-        if (cooldownId != null) {
-            conditions.add(
-                    createCooldownCondition(cooldownId)
-            );
-        }
-
-        if (onCooldownId != null) {
-            conditions.add(
-                    createOnCooldownCondition(onCooldownId)
-            );
-        }
-
-        return conditions;
+        return createdConditions;
     }
 
-    private RuleCondition createMaterialCondition(
-            String materialName
-    ) {
-        String normalizedName = materialName
-                .trim()
-                .toUpperCase(Locale.ROOT);
+    private void registerBuiltInConditions() {
+        registerCondition(
+                "always",
+                Arrays.asList("always"),
+                section -> new AlwaysCondition()
+        );
 
-        if (normalizedName.isEmpty()) {
-            throw new RuleLoadException(
-                    "Material condition cannot be empty."
-            );
+        registerCondition(
+                "item",
+                Arrays.asList("item"),
+                section -> createItemCondition(section.getString("item"))
+        );
+
+        registerCondition(
+                "material",
+                Arrays.asList("material"),
+                section -> createMaterialCondition(section.getString("material"))
+        );
+
+        registerCondition(
+                "permission",
+                Arrays.asList("permission"),
+                section -> createPermissionCondition(section.getString("permission"))
+        );
+
+        registerCondition(
+                "world",
+                Arrays.asList("world"),
+                section -> createWorldCondition(section.getString("world"))
+        );
+
+        registerCondition(
+                "region",
+                Arrays.asList("region"),
+                section -> createRegionCondition(section.getString("region"))
+        );
+
+        registerCondition(
+                "y-level",
+                Arrays.asList("y-min", "y-max"),
+                section -> createYLevelCondition(
+                        readOptionalInteger(section, "y-min"),
+                        readOptionalInteger(section, "y-max")
+                )
+        );
+
+        registerCondition(
+                "interaction-action",
+                Arrays.asList("interaction-action"),
+                section -> createInteractionActionCondition(
+                        section.get("interaction-action")
+                )
+        );
+
+        registerCondition(
+                "cooldown",
+                Arrays.asList("cooldown"),
+                section -> createCooldownCondition(section.getString("cooldown"))
+        );
+
+        registerCondition(
+                "on-cooldown",
+                Arrays.asList("on-cooldown"),
+                section -> createOnCooldownCondition(section.getString("on-cooldown"))
+        );
+    }
+
+    private Integer readOptionalInteger(ConfigurationSection section, String key) {
+        if (!section.contains(key)) {
+            return null;
         }
 
-        Material material =
-                Material.matchMaterial(normalizedName);
+        Object value = section.get(key);
+        if (!(value instanceof Integer)) {
+            throw new RuleLoadException("Condition '" + key + "' must be a whole number.");
+        }
+
+        return (Integer) value;
+    }
+
+    private RuleCondition createMaterialCondition(String materialName) {
+        String normalizedName = requireText(materialName, "Material condition")
+                .toUpperCase(Locale.ROOT);
+        Material material = Material.matchMaterial(normalizedName);
 
         if (material == null) {
-            throw new RuleLoadException(
-                    "Unknown material '" + materialName + "'."
-            );
+            throw new RuleLoadException("Unknown material '" + materialName + "'.");
         }
 
         return new MaterialCondition(material);
     }
 
-    private RuleCondition createItemCondition(
-            String itemId
-    ) {
-        String normalizedItemId = itemId.trim();
+    private RuleCondition createItemCondition(String itemId) {
+        String normalizedItemId = requireText(itemId, "Item condition");
 
-        if (normalizedItemId.isEmpty()) {
-            throw new RuleLoadException(
-                    "Item condition cannot be empty."
-            );
+        if (services.getItemService().getCustomItem(normalizedItemId) == null) {
+            throw new RuleLoadException("Unknown custom item '" + itemId + "'.");
         }
 
-        if (services.getItemService()
-                .getCustomItem(normalizedItemId) == null) {
-            throw new RuleLoadException(
-                    "Unknown custom item '" + itemId + "'."
-            );
-        }
-
-        return new ItemCondition(
-                services.getItemService(),
-                normalizedItemId
-        );
+        return new ItemCondition(services.getItemService(), normalizedItemId);
     }
 
-    private RuleCondition createPermissionCondition(
-            String permission
-    ) {
-        String normalizedPermission =
-                permission.trim();
-
-        if (normalizedPermission.isEmpty()) {
-            throw new RuleLoadException(
-                    "Permission condition cannot be empty."
-            );
-        }
-
-        return new PermissionCondition(
-                normalizedPermission
-        );
+    private RuleCondition createPermissionCondition(String permission) {
+        return new PermissionCondition(requireText(permission, "Permission condition"));
     }
 
-    private RuleCondition createWorldCondition(
-            String worldName
-    ) {
-        String normalizedWorldName =
-                worldName.trim();
-
-        if (normalizedWorldName.isEmpty()) {
-            throw new RuleLoadException(
-                    "World condition cannot be empty."
-            );
-        }
-
-        return new WorldCondition(
-                normalizedWorldName
-        );
+    private RuleCondition createWorldCondition(String worldName) {
+        return new WorldCondition(requireText(worldName, "World condition"));
     }
 
-    private RuleCondition createRegionCondition(
-            String regionName
-    ) {
-        String normalizedRegionName =
-                regionName.trim();
-
-        if (normalizedRegionName.isEmpty()) {
-            throw new RuleLoadException(
-                    "Region condition cannot be empty."
-            );
-        }
-
-        return new RegionCondition(
-                normalizedRegionName
-        );
+    private RuleCondition createRegionCondition(String regionName) {
+        return new RegionCondition(requireText(regionName, "Region condition"));
     }
 
-    private RuleCondition createYLevelCondition(
-            Integer minY,
-            Integer maxY
-    ) {
-        if (minY != null
-                && maxY != null
-                && minY > maxY) {
+    private RuleCondition createYLevelCondition(Integer minY, Integer maxY) {
+        if (minY != null && maxY != null && minY > maxY) {
             throw new RuleLoadException(
                     "Condition 'y-min' cannot be greater than 'y-max'."
             );
         }
 
-        return new YLevelCondition(
-                minY,
-                maxY
-        );
+        return new YLevelCondition(minY, maxY);
     }
 
-    private RuleCondition createInteractionActionCondition(
-            Object configuredValue
-    ) {
-        Set<Action> actions =
-                EnumSet.noneOf(Action.class);
+    private RuleCondition createInteractionActionCondition(Object configuredValue) {
+        Set<Action> actions = EnumSet.noneOf(Action.class);
 
         if (configuredValue instanceof String) {
-            actions.add(
-                    parseInteractionAction(
-                            (String) configuredValue
-                    )
-            );
+            actions.add(parseInteractionAction((String) configuredValue));
         } else if (configuredValue instanceof List<?>) {
-            List<?> configuredActions =
-                    (List<?>) configuredValue;
+            List<?> configuredActions = (List<?>) configuredValue;
 
             if (configuredActions.isEmpty()) {
-                throw new RuleLoadException(
-                        "Interaction action list cannot be empty."
-                );
+                throw new RuleLoadException("Interaction action list cannot be empty.");
             }
 
             for (Object actionValue : configuredActions) {
@@ -306,11 +320,7 @@ public final class ConditionFactory {
                     );
                 }
 
-                actions.add(
-                        parseInteractionAction(
-                                (String) actionValue
-                        )
-                );
+                actions.add(parseInteractionAction((String) actionValue));
             }
         } else {
             throw new RuleLoadException(
@@ -321,76 +331,67 @@ public final class ConditionFactory {
         return new InteractionActionCondition(actions);
     }
 
-    private Action parseInteractionAction(
-            String actionName
-    ) {
-        String normalizedAction = actionName
-                .trim()
+    private Action parseInteractionAction(String actionName) {
+        String normalizedAction = requireText(actionName, "Interaction action")
                 .toUpperCase(Locale.ROOT);
-
-        if (normalizedAction.isEmpty()) {
-            throw new RuleLoadException(
-                    "Interaction action cannot be empty."
-            );
-        }
 
         try {
             return Action.valueOf(normalizedAction);
         } catch (IllegalArgumentException exception) {
             throw new RuleLoadException(
-                    "Unknown interaction action '"
-                            + actionName + "'."
+                    "Unknown interaction action '" + actionName + "'."
             );
         }
     }
 
-    private RuleCondition createCooldownCondition(
-            String cooldownId
-    ) {
-        String normalizedCooldownId = cooldownId
-                .trim()
+    private RuleCondition createCooldownCondition(String cooldownId) {
+        String normalizedCooldownId = requireText(cooldownId, "Cooldown condition")
                 .toLowerCase(Locale.ROOT);
-
-        if (normalizedCooldownId.isEmpty()) {
-            throw new RuleLoadException(
-                    "Cooldown condition cannot be empty."
-            );
-        }
-
-        return new CooldownCondition(
-                services.getCooldownService(),
-                normalizedCooldownId
-        );
+        return new CooldownCondition(services.getCooldownService(), normalizedCooldownId);
     }
 
-    private RuleCondition createOnCooldownCondition(
-            String cooldownId
-    ) {
-        String normalizedCooldownId = cooldownId
-                .trim()
+    private RuleCondition createOnCooldownCondition(String cooldownId) {
+        String normalizedCooldownId = requireText(cooldownId, "On-cooldown condition")
                 .toLowerCase(Locale.ROOT);
-
-        if (normalizedCooldownId.isEmpty()) {
-            throw new RuleLoadException(
-                    "On-cooldown condition cannot be empty."
-            );
-        }
-
         return new OnCooldownCondition(
                 services.getCooldownService(),
                 normalizedCooldownId
         );
     }
 
-    private void validateKeys(
-            ConfigurationSection section
-    ) {
+    private void validateKeys(ConfigurationSection section) {
         for (String key : section.getKeys(false)) {
-            if (!SUPPORTED_KEYS.contains(key)) {
-                throw new RuleLoadException(
-                        "Unknown condition '" + key + "'."
-                );
+            if (!supportedKeys.contains(key.toLowerCase(Locale.ROOT))) {
+                throw new RuleLoadException("Unknown condition '" + key + "'.");
             }
         }
+    }
+
+    private String requireText(String value, String fieldName) {
+        if (value == null) {
+            throw new RuleLoadException(fieldName + " is missing.");
+        }
+
+        String normalized = value.trim();
+
+        if (normalized.isEmpty()) {
+            throw new RuleLoadException(fieldName + " cannot be empty.");
+        }
+
+        return normalized;
+    }
+
+    private String normalizeIdentifier(String value, String fieldName) {
+        if (value == null) {
+            throw new IllegalArgumentException(fieldName + " cannot be null.");
+        }
+
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " cannot be empty.");
+        }
+
+        return normalized;
     }
 }

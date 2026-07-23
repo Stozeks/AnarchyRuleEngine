@@ -24,7 +24,11 @@ public final class RuleEngine {
     }
 
     public RuleExecutionResult evaluate(InteractionContext context) {
-        RuleExecutionResult result = new RuleExecutionResult();
+        return evaluate(context, false);
+    }
+
+    public RuleExecutionResult evaluate(InteractionContext context, boolean tracingEnabled) {
+        RuleExecutionResult result = new RuleExecutionResult(tracingEnabled);
 
         for (Rule rule : rules) {
             boolean stopProcessing =

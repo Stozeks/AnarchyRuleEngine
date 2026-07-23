@@ -1,8 +1,3 @@
-debug: false
-
-settings:
-  bypass-permission: "anarchyruleengine.bypass"
-
 items:
   trap:
     material: STICK
