@@ -32,3 +32,12 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Local Minecraft test server
+server/
+plugins/
+world/
+world_nether/
+world_the_end/
+logs/
+cache/
